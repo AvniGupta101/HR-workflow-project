@@ -1,88 +1,50 @@
-import WorkflowCanvas from "./components/canvas/WorkflowCanvas";
-import Sidebar from "./components/sidebar/Sidebar";
-import ConfigPanel from "./components/forms/ConfigPanel";
-import { useWorkflowStore } from "./store/workflowStore";
+import { useState, useRef } from 'react';
+import WorkflowCanvas from './components/canvas/WorkflowCanvas';
+import Sidebar from './components/sidebar/Sidebar';
+import ConfigPanel from './components/forms/ConfigPanel';
+import SimulationPanel from './components/simulation/SimulationPanel';
+import { useWorkflow } from './hooks/useWorkflow';
 
-function App() {
- const handleRun = () => {
-  const { nodes, edges } = useWorkflowStore.getState();
-
-  if (nodes.length === 0) {
-    alert("No workflow created");
-    return;
-  }
-
-  const startNodes = nodes.filter((n) => n.data.label === "start");
-  const endNodes = nodes.filter((n) => n.data.label === "end");
-
-  if (startNodes.length !== 1) {
-    alert("There must be exactly ONE start node");
-    return;
-  }
-
-  if (endNodes.length === 0) {
-    alert("At least one END node required");
-    return;
-  }
-
-  let current = startNodes[0].id;
-  const visited = new Set();
-  const steps = [];
-
-  while (current) {
-    if (visited.has(current)) {
-      alert("Cycle detected in workflow!");
-      return;
-    }
-
-    visited.add(current);
-
-    const node = nodes.find((n) => n.id === current);
-    if (!node) break;
-
-    steps.push(node.data.label);
-
-    const outgoingEdges = edges.filter((e) => e.source === current);
-
-    if (outgoingEdges.length > 1) {
-      alert("Branching not supported yet");
-      return;
-    }
-
-    if (outgoingEdges.length === 0) break;
-
-    current = outgoingEdges[0].target;
-  }
-
-  alert(
-    steps.map((step, i) => `Step ${i + 1}: ${step}`).join("\n")
-  );
-};
+export default function App() {
+  const [showSim, setShowSim] = useState(false);
+  const { exportWorkflow, importWorkflow } = useWorkflow();
+  const fileRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      
-      {/* TOP BAR */}
-      <div
-        style={{
-          padding: "10px",
-          borderBottom: "1px solid gray",
-          display: "flex",
-          justifyContent: "space-between",
-        }}
-      >
-        <h3>HR Workflow Designer</h3>
-        <button onClick={handleRun}>Run Workflow</button>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+
+      {/* NAVBAR */}
+      <div style={{ padding: '0 20px', height: 52, borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 20 }}>⚡</span>
+          <span style={{ fontWeight: 700, fontSize: 16, color: '#1e293b' }}>HR Workflow Designer</span>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => fileRef.current?.click()} style={ghostBtn}>Import</button>
+          <input ref={fileRef} type="file" accept=".json" style={{ display: 'none' }} onChange={(e) => { if (e.target.files?.[0]) importWorkflow(e.target.files[0]); e.target.value = ''; }} />
+          <button onClick={exportWorkflow} style={ghostBtn}>Export JSON</button>
+          <button onClick={() => setShowSim(true)} style={primaryBtn}>▶ Run Workflow</button>
+        </div>
       </div>
 
-      {/* MAIN LAYOUT */}
-      <div style={{ display: "flex", flex: 1 }}>
+      {/* MAIN */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar />
         <WorkflowCanvas />
         <ConfigPanel />
       </div>
+
+      {showSim && <SimulationPanel onClose={() => setShowSim(false)} />}
     </div>
   );
 }
 
-export default App;
+const ghostBtn: React.CSSProperties = {
+  padding: '6px 14px', background: '#fff', border: '1px solid #e2e8f0',
+  borderRadius: 7, fontSize: 13, cursor: 'pointer', color: '#475569', fontWeight: 500,
+};
+
+const primaryBtn: React.CSSProperties = {
+  padding: '7px 16px', background: '#2563eb', border: 'none',
+  borderRadius: 7, fontSize: 13, cursor: 'pointer', color: '#fff', fontWeight: 600,
+};
